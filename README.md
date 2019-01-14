@@ -32,15 +32,19 @@ Tool has following requirements:
 The tool tested on **Ubuntu 16.04 LTS** or higher. To install tool clone it to
 */opt/nextgis_installer_sync* using following commands:
 
-> cd /opt
-> git clone https://github.com/nextgis/nextgis_installer_sync.git
+```console
+$ cd /opt
+$ git clone https://github.com/nextgis/nextgis_installer_sync.git
+```
 
 # Use example
 
 For synchronize NextGIS installer for Windows 64 bit repository execute the
 following command:
 
-> python repo_sync.py -i http://nextgis.com/programs/desktop/repository-win64 -u {nextgis_user} -p {nextgis_user_password} -o /usr/share/nginx/repos/repository-win64
+```console
+$ python repo_sync.py -i http://nextgis.com/programs/desktop/repository-win64 -u {nextgis_user} -p {nextgis_user_password} -o /usr/share/nginx/repos/repository-win64
+```
 
 # License
 
