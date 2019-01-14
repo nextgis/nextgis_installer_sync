@@ -117,6 +117,13 @@ def load_package(url, local_package_updates, path, local_updates_root, package_u
 
     local_updates_root.append(package_update_tag)
 
+def sha1(path):
+    hasher = hashlib.sha1()
+    with open(path, 'rb') as afile:
+        buf = afile.read()
+        hasher.update(buf)
+    return hasher.hexdigest()
+
 def create_license_pakage(user, password, local_package_updates, path, local_updates_root):
     s = requests.Session()
     payload = {'grant_type': 'password', 'client_id': client_id, 'username': user, 'password': password, 'scope': 'user_info.read'}
@@ -155,7 +162,8 @@ def create_license_pakage(user, password, local_package_updates, path, local_upd
 
     # Get key file
     response = s.get(api_endpoint + '/rsa_public_key/', stream=True)
-    with open(os.path.join(license_dir, 'public.key'), "wb") as handle:
+    key_path = os.path.join(license_dir, 'public.key')
+    with open(key_path, "wb") as handle:
         for data in tqdm(response.iter_content(), desc='public.key'):
             handle.write(data)
 
@@ -172,14 +180,35 @@ def create_license_pakage(user, password, local_package_updates, path, local_upd
         'end_date': end_date,
     }
 
-    with open(os.path.join(license_dir, 'license.json'), 'w') as outfile:
+    lic_path = os.path.join(license_dir, 'license.json')
+    with open(lic_path, 'w') as outfile:
         json.dump(license_data, outfile)
+
+    # Check change of public.key and license.json
+    is_same = False
+    prev_lic_path = os.path.join(package_dir, 'license.json.prev')
+    if os.path.exists(prev_lic_path):
+        sha1_current = sha1(lic_path)
+        sha1_prev = sha1(prev_lic_path)
+
+        is_same = sha1_prev == sha1_current
+
+    prev_key_path = os.path.join(package_dir, 'public.key.prev')
+    if is_same and os.path.exists(prev_key_path):
+        sha1_current = sha1(key_path)
+        sha1_prev = sha1(prev_key_path)
+
+        is_same = sha1_prev == sha1_current
+
+    copyfile(lic_path, prev_lic_path)
+    copyfile(key_path, prev_key_path)
 
     # Create 7z archive
     share_arch = os.path.join(package_dir, 'share.7z')
     subprocess.call(['7z', 'a', share_arch, os.path.join(package_dir, 'share')])
     # Create SHA1 sign
-    sha1Hash = hashlib.sha1(share_arch).hexdigest()
+    sha1Hash = sha1(share_arch)
+
     with open(os.path.join(package_dir, 'share.7z.sha1'), 'w') as outfile:
         outfile.write(sha1Hash)
 
@@ -187,22 +216,28 @@ def create_license_pakage(user, password, local_package_updates, path, local_upd
     meta_dir = os.path.join(package_dir, license_package_name)
     if not os.path.exists(meta_dir):
         os.makedirs(meta_dir)
-    meta_arch = os.path.join(package_dir, 'meta.7z')
-    subprocess.call(['7z', 'a', meta_arch, meta_dir])
+
+    if not is_same:
+        meta_arch = os.path.join(package_dir, 'meta.7z')
+        subprocess.call(['7z', 'a', meta_arch, meta_dir])
+
+    sha1Hash = sha1(os.path.join(package_dir, 'meta.7z'))
 
     # If sha1 change update version
     version = license_base_version + '-' + str(license_version)
-    if license_package_name in local_package_updates and sha1Hash != local_package_updates[license_package_name]:
+    if not is_same:
         version = license_base_version + '-' + str(license_version + 1)
     # Add dummy package
     new_package_dir = os.path.join(path, license_package_name)
-    if not os.path.exists(new_package_dir):
-        os.makedirs(new_package_dir)
+    if os.path.exists(new_package_dir):
+        rmtree(new_package_dir)
+    os.makedirs(new_package_dir)
 
     # Copy files
     copyfile(os.path.join(package_dir, 'share.7z'), os.path.join(new_package_dir, version + 'share.7z'))
     copyfile(os.path.join(package_dir, 'share.7z.sha1'), os.path.join(new_package_dir, version + 'share.7z.sha1'))
     copyfile(os.path.join(package_dir, 'meta.7z'), os.path.join(new_package_dir, version + 'meta.7z'))
+
     # Add license package tag
     for child in local_updates_root:
         if child.tag == 'PackageUpdate':
@@ -217,8 +252,10 @@ def create_license_pakage(user, password, local_package_updates, path, local_upd
     pa = ET.SubElement(local_updates_root, 'PackageUpdate')
     pa_name = ET.SubElement(pa, 'Name')
     pa_name.text = license_package_name
+    pa_dname = ET.SubElement(pa, 'DisplayName')
+    pa_dname.text = 'License keys'
     pa_desc = ET.SubElement(pa, 'Description')
-    pa_desc.text = 'License keys'
+    pa_desc.text = 'Enterprise license keys'
     pa_date = ET.SubElement(pa, 'ReleaseDate')
     pa_date.text = datetime.date.today().strftime("%Y-%m-%d")
     pa_version = ET.SubElement(pa, 'Version')
@@ -228,6 +265,8 @@ def create_license_pakage(user, password, local_package_updates, path, local_upd
     pa_uf.set('CompressedSize', str(file_size))
     pa_uf.set('UncompressedSize', str(file_size))
     pa_uf.set('OS', 'Any')
+    pa_da = ET.SubElement(pa, 'DownloadableArchives')
+    pa_da.text = 'share.7z'
     pa_v = ET.SubElement(pa, 'Virtual')
     pa_v.text = 'true'
     pa_sha1 = ET.SubElement(pa, 'SHA1')
@@ -287,3 +326,5 @@ if __name__ == "__main__":
     if os.path.exists(args.output):
         rmtree(args.output)
     os.rename(tmp_dir, args.output)
+
+    subprocess.call(['chmod', '-R', '0755', args.output])
