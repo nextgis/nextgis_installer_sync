@@ -228,6 +228,8 @@ def create_license_pakage(user, password, local_package_updates, path, local_upd
     pa_uf.set('CompressedSize', str(file_size))
     pa_uf.set('UncompressedSize', str(file_size))
     pa_uf.set('OS', 'Any')
+    pa_v = ET.SubElement(pa, 'Virtual')
+    pa_v.text = 'true'
     pa_sha1 = ET.SubElement(pa, 'SHA1')
     pa_sha1.text =  sha1Hash
 
