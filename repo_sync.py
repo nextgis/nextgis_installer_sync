@@ -124,7 +124,7 @@ def sha1(path):
         hasher.update(buf)
     return hasher.hexdigest()
 
-def create_license_pakage(user, password, local_package_updates, path, local_updates_root):
+def create_license_pakage(user, password, local_package_updates, path, local_updates_root, is_win):
     s = requests.Session()
     payload = {'grant_type': 'password', 'client_id': client_id, 'username': user, 'password': password, 'scope': 'user_info.read'}
     req = s.post(auth_url, data=payload)
@@ -149,7 +149,11 @@ def create_license_pakage(user, password, local_package_updates, path, local_upd
 
     license_package_name = 'com.nextgis.license'
     package_dir = os.path.join(tempfile.gettempdir(), license_package_name)
-    license_dir = os.path.join(package_dir, 'share', 'license')
+    license_dir = ''
+    if is_win:
+        license_dir = os.path.join(package_dir, 'share', 'license')
+    else:
+        license_dir = os.path.join(package_dir, 'usr', 'share', 'license')
     if not os.path.exists(license_dir):
         os.makedirs(license_dir)
 
@@ -317,8 +321,9 @@ if __name__ == "__main__":
 
     user, password = get_user_password(args)
     if user is not None and password is not None:
+        is_win = 'repository-win' in args.input_url
         # Get license.key information and create license dummy package
-        create_license_pakage(user, password, local_package_updates, tmp_dir, local_updates_root)
+        create_license_pakage(user, password, local_package_updates, tmp_dir, local_updates_root, is_win)
 
     ET.ElementTree(local_updates_root).write(os.path.join(tmp_dir, 'Updates.xml'))
 
