@@ -35,6 +35,8 @@ def parse_arguments():
     parser.add_argument('-p', dest='password', required=False, help='NextGIS user password (nextgis id password)')
     parser.add_argument('-pf', dest='password_file', required=False, help='NextGIS user and password (nextgis id password) file. First line is login, second - password')
     parser.add_argument('-o', dest='output', required=True, help='Local NextGIS installer repository path')
+    parser.add_argument('-l', dest='license', action='store_true', required=False, help='Generate license package')
+    parser.add_argument('-w', dest='is_win', action='store_false', required=False, help='Is windows repo')
 
     return parser.parse_args()
 
@@ -61,24 +63,24 @@ def load_package(url, local_package_updates, path, local_updates_root, package_u
 
     name_tag = package_update_tag.find('Name')
     if name_tag is None:
-        print 'Name tag not found. Skip package'
+        print('Name tag not found. Skip package')
         return
     name = name_tag.text
 
     sha1_tag = package_update_tag.find('SHA1')
     if sha1_tag is None:
-        print 'SHA1 tag not found. Skip package ' + name
+        print('SHA1 tag not found. Skip package ' + name)
         return
     sha1 = sha1_tag.text
 
     if name in local_package_updates and sha1 == local_package_updates[name]:
-        print 'No update needed. Skip package ' + name
+        print('No update needed. Skip package ' + name)
         local_updates_root.append(package_update_tag)
         return
 
     version_tag = package_update_tag.find('Version')
     if version_tag is None:
-        print 'Version tag not found. Skip package ' + name
+        print('Version tag not found. Skip package ' + name)
         return
     version = version_tag.text
 
@@ -102,7 +104,7 @@ def load_package(url, local_package_updates, path, local_updates_root, package_u
             except Exception as e:
                 print(e)
 
-    print 'Download files for package ' + name
+    print('Download files for package ' + name)
 
     for da_item in da:
         download_url = url + '/' + name + '/' + da_item
@@ -319,11 +321,11 @@ if __name__ == "__main__":
         if child.tag == 'PackageUpdate':
             load_package(args.input_url, local_package_updates, tmp_dir, local_updates_root, child)
 
-    user, password = get_user_password(args)
-    if user is not None and password is not None:
-        is_win = 'repository-win' in args.input_url
-        # Get license.key information and create license dummy package
-        create_license_pakage(user, password, local_package_updates, tmp_dir, local_updates_root, is_win)
+    if args.license:
+        user, password = get_user_password(args)
+        if user is not None and password is not None:
+            # Get license.key information and create license dummy package
+            create_license_pakage(user, password, local_package_updates, tmp_dir, local_updates_root, args.is_win)
 
     ET.ElementTree(local_updates_root).write(os.path.join(tmp_dir, 'Updates.xml'))
 
