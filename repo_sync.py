@@ -36,7 +36,6 @@ def parse_arguments():
     parser.add_argument('-pf', dest='password_file', required=False, help='NextGIS user and password (nextgis id password) file. First line is login, second - password')
     parser.add_argument('-o', dest='output', required=True, help='Local NextGIS installer repository path')
     parser.add_argument('-l', dest='license', action='store_true', required=False, help='Generate license package')
-    parser.add_argument('-w', dest='is_win', action='store_false', required=False, help='Is windows repo')
 
     return parser.parse_args()
 
@@ -324,8 +323,9 @@ if __name__ == "__main__":
     if args.license:
         user, password = get_user_password(args)
         if user is not None and password is not None:
+            is_win = 'repository-win' in args.input_url
             # Get license.key information and create license dummy package
-            create_license_pakage(user, password, local_package_updates, tmp_dir, local_updates_root, args.is_win)
+            create_license_pakage(user, password, local_package_updates, tmp_dir, local_updates_root, is_win)
 
     ET.ElementTree(local_updates_root).write(os.path.join(tmp_dir, 'Updates.xml'))
 
