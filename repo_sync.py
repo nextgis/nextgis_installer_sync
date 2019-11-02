@@ -27,6 +27,7 @@ api_endpoint = 'https://my.nextgis.com/api/v1'
 license_package_name = 'com.nextgis.license'
 license_base_version = '1.0'
 license_version = 0
+update_package_name = 'com.nextgis.nextgis_updater'
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Create or update NextGIS desktop software installer repository.')
@@ -82,6 +83,11 @@ def load_package(url, local_package_updates, path, local_updates_root, package_u
         print('Version tag not found. Skip package ' + name)
         return
     version = version_tag.text
+
+    # Skip updater 
+    if name == update_package_name:
+        print('Skip package ' + name)
+        return
 
     da_tag = package_update_tag.find('DownloadableArchives')
     da = [version + 'meta.7z']
