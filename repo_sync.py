@@ -85,9 +85,10 @@ def load_package(url, local_package_updates, path, local_updates_root, package_u
     version = version_tag.text
 
     # Skip updater 
-    if name == update_package_name:
-        print('Skip package ' + name)
-        return
+    # TODO: Now upsent of com.nextgis.nextgis updater breaks dependencies. Fix dependencies or patch updater url.
+    # if name == update_package_name:
+    #     print('Skip package ' + name)
+    #     return
 
     da_tag = package_update_tag.find('DownloadableArchives')
     da = [version + 'meta.7z']
